@@ -7,7 +7,7 @@
       # apps
       telegram-desktop
       discord
-      kolourpaint
+      kdePackages.kolourpaint
     ];
 
   programs.steam.enable = true;
