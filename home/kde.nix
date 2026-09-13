@@ -5,43 +5,29 @@
   home.homeDirectory = "/home/${username}";
 
   home.stateVersion = "26.05";
- 
+
   # wallpaper
   #stylix = {
   #  enable = true;
   #  overrideConfig = true;
   #  image = ./path/to/your/wallpaper.jpg; # Path to your image file
   #};
- 
 
   # task panel on all displays
   programs.plasma = {
-   enable = true;
+    enable = true;
 
-   # Overwrites manual GUI changes with this config
-   # overrideConfig = true;
+    # Overwrites manual GUI changes with this config
+    # overrideConfig = true;
 
-   panels = [
+    panels = [
       {
-          home-manager.users.rassik = {
-            imports = [
-              ./home/kde.nix
-              ./home/browser.nix
-            ];
-          };
-
-          # чтобы HM не падал, если конфиг-файл уже существует в системе
-          home-manager.backupFileExtension = "backup";
-        }
-      ];
-    };
-  };
-}
         location = "bottom";
         height = 48;
         screen = "all";
         widgets = [
           "org.kde.plasma.pager"
+          "org.kde.plasma.taskmanager"
           "org.kde.plasma.kickoff"
           "org.kde.plasma.icontasks"
           "org.kde.plasma.systemtray"
