@@ -27,7 +27,6 @@
         screen = "all";
         widgets = [
           "org.kde.plasma.pager"
-          "org.kde.plasma.taskmanager"
           "org.kde.plasma.kickoff"
           "org.kde.plasma.icontasks"
           "org.kde.plasma.systemtray"
