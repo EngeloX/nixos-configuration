@@ -14,7 +14,8 @@
     # overrideConfig = true;
     workspace = {
       wallpaper = ./images/yuno.jpg;
-    }
+    };
+
     panels = [
       {
         location = "bottom";
