@@ -23,12 +23,25 @@
 
    panels = [
       {
+          home-manager.users.rassik = {
+            imports = [
+              ./home/kde.nix
+              ./home/browser.nix
+            ];
+          };
+
+          # чтобы HM не падал, если конфиг-файл уже существует в системе
+          home-manager.backupFileExtension = "backup";
+        }
+      ];
+    };
+  };
+}
         location = "bottom";
         height = 48;
         screen = "all";
         widgets = [
           "org.kde.plasma.pager"
-          "org.kde.plasma.taskmanager"
           "org.kde.plasma.kickoff"
           "org.kde.plasma.icontasks"
           "org.kde.plasma.systemtray"
