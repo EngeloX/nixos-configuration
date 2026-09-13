@@ -16,23 +16,38 @@
     };
   };
 
-  outputs = { nixpkgs, home-manager, plasma-manager, ... }: {
-    nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
+  outputs = { nixpkgs, home-manager, plasma-manager, ... }:
+    let
+      vars = import  ./username.nix;
+      inherit (vars) username;
+    in
+    {
+      nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
 
-      modules = [
-        ./configuration.nix
+        specialArgs = { inherit username; };
 
-        home-manager.nixosModules.home-manager
+        modules = [
+          ./configuration.nix
 
-        {
-          home-manager.sharedModules = [
-            plasma-manager.homeModules.plasma-manager
-          ];
+          home-manager.nixosModules.home-manager
 
-          home-manager.users.rassik = import ./home/rassik.nix;
-        }
-      ];
+          {
+            home-manager.sharedModules = [
+              plasma-manager.homeModules.plasma-manager
+            ];
+
+            home-manager.users.${username} = {
+              imports = [
+                ./home/kde.nix
+                ./home/browser.nix
+              ];
+              _module.args = { inherit username; };
+            };
+
+            home-manager.backupFileExtension = "backup";
+          }
+        ];
+      };
     };
-  };
 }
