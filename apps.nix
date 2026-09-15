@@ -7,7 +7,7 @@
       # apps
       telegram-desktop
       discord
-      kdePackages.kolourpaint
+      pkgs.cisco-packet-tracer_9
     ];
 
   programs.steam.enable = true;
