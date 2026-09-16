@@ -90,7 +90,7 @@
   ];
 
   # ============================================================
-  # АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ ТОЛЬКО AMNEZIA VPN
+  # АВТОМАТИЧЕСКАЯ ПРОВЕРКА И ОБНОВЛЕНИЕ AMNEZIAVPN
   # ============================================================
 
   systemd.services.update-amnezia = {
@@ -98,7 +98,10 @@
 
     serviceConfig = {
       Type = "oneshot";
-      User = "root";
+
+      # Запускаем Git/Nix от владельца /etc/nixos.
+      User = username;
+
       WorkingDirectory = "/etc/nixos";
     };
 
@@ -108,15 +111,14 @@
       FLAKE="/etc/nixos"
       LOCK="$FLAKE/flake.lock"
 
-      # Запоминаем состояние lock-файла до проверки.
-      OLD_HASH="$(${pkgs.coreutils}/bin/sha256sum "$LOCK" | ${pkgs.gawk}/bin/awk '{print $1}')"
-
       echo "Checking nixos-unstable for AmneziaVPN updates..."
 
+      OLD_HASH="$(${pkgs.coreutils}/bin/sha256sum "$LOCK" | ${pkgs.gawk}/bin/awk '{print $1}')"
+
       # Обновляем ТОЛЬКО nixpkgs-unstable.
-      # nixpkgs (26.05), home-manager и plasma-manager
-      # здесь не обновляются.
-      ${pkgs.nix}/bin/nix flake update nixpkgs-unstable --flake "$FLAKE"
+      ${pkgs.nix}/bin/nix flake update \
+        nixpkgs-unstable \
+        --flake "$FLAKE"
 
       NEW_HASH="$(${pkgs.coreutils}/bin/sha256sum "$LOCK" | ${pkgs.gawk}/bin/awk '{print $1}')"
 
@@ -125,18 +127,31 @@
         exit 0
       fi
 
-      echo "nixos-unstable changed. Rebuilding NixOS..."
+      echo "nixos-unstable changed."
+      echo "A new AmneziaVPN package may be available."
 
-      ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch \
+      # Сам rebuild выполняем через sudo.
+      ${pkgs.sudo}/bin/sudo ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch \
         --flake "$FLAKE#nixos"
-
-      # После записи lock-файла root возвращаем владельцем
-      # обычного пользователя, чтобы ты мог редактировать его без sudo.
-      ${pkgs.coreutils}/bin/chown ${username} "$LOCK"
 
       echo "AmneziaVPN update check completed."
     '';
   };
+
+  # Разрешаем пользователю rassik запускать nixos-rebuild
+  # без запроса пароля, но только с конкретным flake.
+  security.sudo.extraRules = [
+    {
+      users = [ username ];
+
+      commands = [
+        {
+          command = "${pkgs.nixos-rebuild}/bin/nixos-rebuild switch --flake /etc/nixos#nixos";
+          options = [ "NOPASSWD" ];
+        }
+      ];
+    }
+  ];
 
   systemd.timers.update-amnezia = {
     description = "Hourly AmneziaVPN update check";
@@ -146,14 +161,8 @@
     ];
 
     timerConfig = {
-      # Проверять каждый час.
       OnCalendar = "hourly";
-
-      # Если компьютер был выключен во время запуска —
-      # выполнить пропущенную проверку после включения.
       Persistent = true;
-
-      # Не запускать несколько проверок одновременно.
       RandomizedDelaySec = "5min";
     };
   };
