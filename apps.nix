@@ -1,15 +1,27 @@
 # applications
-{ config, pkgs, ... }:
+{ config, pkgs, unstablePkgs, ... }:
 
 {
-  # user apps
   environment.systemPackages = with pkgs; [
-      # apps
-      telegram-desktop
-      discord
-      pkgs.cisco-packet-tracer_9
-    ];
+    telegram-desktop
+    discord
+  ];
 
   programs.steam.enable = true;
-  programs.amnezia-vpn.enable = true;
+
+  # AmneziaVPN берём ТОЛЬКО из nixos-unstable.
+  programs.amnezia-vpn = {
+    enable = true;
+    package = unstablePkgs.amnezia-vpn;
+  };
+
+  # У unstable-версии Amnezia свои runtime-зависимости.
+  # Не позволяем stable pkgs подставлять их в systemd PATH.
+  systemd.services."AmneziaVPN".path = with unstablePkgs; [
+    gawk
+    iptables
+    procps
+    iproute2
+    sudo
+  ];
 }

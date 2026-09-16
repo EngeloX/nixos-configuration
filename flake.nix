@@ -2,7 +2,11 @@
   description = "My NixOS configuration";
 
   inputs = {
+    # Основная система — НЕСТАБИЛЬНАЯ ВЕТКА НЕ ИСПОЛЬЗУЕТСЯ ЗДЕСЬ.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+
+    # Только для AmneziaVPN.
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";
@@ -16,16 +20,31 @@
     };
   };
 
-  outputs = { nixpkgs, home-manager, plasma-manager, ... }:
+  outputs = {
+    nixpkgs,
+    nixpkgs-unstable,
+    home-manager,
+    plasma-manager,
+    ...
+  }:
+
     let
-      vars = import  ./username.nix;
+      vars = import ./username.nix;
       inherit (vars) username;
+
+      # Отдельный package set из nixos-unstable.
+      unstablePkgs = import nixpkgs-unstable {
+        system = "x86_64-linux";
+        config.allowUnfree = true;
+      };
     in
     {
       nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
 
-        specialArgs = { inherit username; };
+        specialArgs = {
+          inherit username unstablePkgs;
+        };
 
         modules = [
           ./configuration.nix
@@ -42,7 +61,10 @@
                 ./home/kde.nix
                 ./home/browser.nix
               ];
-              _module.args = { inherit username; };
+
+              _module.args = {
+                inherit username;
+              };
             };
 
             home-manager.backupFileExtension = "backup";

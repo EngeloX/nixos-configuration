@@ -3,24 +3,17 @@
 {
   imports =
     [
-      ./hardware-configuration.nix # Include the results of the hardware scan.
-      ./apps.nix # Include the result of other user applications
-      ./utils.nix # Include the results of packages and cli utilitas
+      ./hardware-configuration.nix
+      ./apps.nix
+      ./utils.nix
     ];
 
-  # Use the systemd-boot EFI boot loader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  networking.hostName = "nixos"; # Define your hostname.
-
-  # Enable networking
+  networking.hostName = "nixos";
   networking.networkmanager.enable = true;
-
-  # Set your time zone.
   time.timeZone = "Asia/Omsk";
-
-  # Select internationalisation properties.
   i18n.defaultLocale = "en_US.UTF-8";
 
   i18n.extraLocaleSettings = {
@@ -35,44 +28,37 @@
     LC_TIME = "ru_RU.UTF-8";
   };
 
-  # Disable the X11 windowing system.
   services.xserver.enable = false;
 
-  # NVidia display artifacts fixing
-  # nvidia 1050ti
   services.xserver.videoDrivers = [ "nvidia" ];
 
   hardware.graphics.enable = true;
 
   hardware.nvidia = {
-    modesetting.enable = true;   # обязательно для Wayland
+    modesetting.enable = true;
     powerManagement.enable = false;
-    open = false;                #  Pascal (1050 Ti) — только проприетарный драйвер
+    open = false;
     nvidiaSettings = true;
     package = config.boot.kernelPackages.nvidiaPackages.legacy_580;
   };
 
-  # activate bluetooth
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = true;
 
-  # Enable the KDE Plasma Desktop Environment.
   services.displayManager.sddm.enable = true;
   services.desktopManager.plasma6.enable = true;
 
-  # Configure keymap in X11
   services.xserver.xkb = {
     layout = "us,ru";
     variant = "";
-    options = "grp:alt_shift_toggle"; # переключение по Alt+Shift
+    options = "grp:alt_shift_toggle";
   };
 
-  # Enable CUPS to print documents.
   services.printing.enable = true;
 
-  # Enable sound with pipewire.
   services.pulseaudio.enable = false;
   security.rtkit.enable = true;
+
   services.pipewire = {
     enable = true;
     alsa.enable = true;
@@ -80,18 +66,20 @@
     pulse.enable = true;
   };
 
-  # Define a user account. Don't forget to set a password with 'passwd'.
   users.users.${username} = {
     isNormalUser = true;
     description = username;
-    extraGroups = [ "networkmanager" "wheel" ];
+
+    extraGroups = [
+      "networkmanager"
+      "wheel"
+    ];
+
     packages = with pkgs; [
       kdePackages.kate
-    #  thunderbird
     ];
   };
 
-  # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
   system.stateVersion = "26.05";
@@ -100,4 +88,73 @@
     "nix-command"
     "flakes"
   ];
+
+  # ============================================================
+  # АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ ТОЛЬКО AMNEZIA VPN
+  # ============================================================
+
+  systemd.services.update-amnezia = {
+    description = "Check and update AmneziaVPN from nixos-unstable";
+
+    serviceConfig = {
+      Type = "oneshot";
+      User = "root";
+      WorkingDirectory = "/etc/nixos";
+    };
+
+    script = ''
+      set -eu
+
+      FLAKE="/etc/nixos"
+      LOCK="$FLAKE/flake.lock"
+
+      # Запоминаем состояние lock-файла до проверки.
+      OLD_HASH="$(${pkgs.coreutils}/bin/sha256sum "$LOCK" | ${pkgs.gawk}/bin/awk '{print $1}')"
+
+      echo "Checking nixos-unstable for AmneziaVPN updates..."
+
+      # Обновляем ТОЛЬКО nixpkgs-unstable.
+      # nixpkgs (26.05), home-manager и plasma-manager
+      # здесь не обновляются.
+      ${pkgs.nix}/bin/nix flake update nixpkgs-unstable --flake "$FLAKE"
+
+      NEW_HASH="$(${pkgs.coreutils}/bin/sha256sum "$LOCK" | ${pkgs.gawk}/bin/awk '{print $1}')"
+
+      if [ "$OLD_HASH" = "$NEW_HASH" ]; then
+        echo "No changes in nixpkgs-unstable."
+        exit 0
+      fi
+
+      echo "nixos-unstable changed. Rebuilding NixOS..."
+
+      ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch \
+        --flake "$FLAKE#nixos"
+
+      # После записи lock-файла root возвращаем владельцем
+      # обычного пользователя, чтобы ты мог редактировать его без sudo.
+      ${pkgs.coreutils}/bin/chown ${username} "$LOCK"
+
+      echo "AmneziaVPN update check completed."
+    '';
+  };
+
+  systemd.timers.update-amnezia = {
+    description = "Hourly AmneziaVPN update check";
+
+    wantedBy = [
+      "timers.target"
+    ];
+
+    timerConfig = {
+      # Проверять каждый час.
+      OnCalendar = "hourly";
+
+      # Если компьютер был выключен во время запуска —
+      # выполнить пропущенную проверку после включения.
+      Persistent = true;
+
+      # Не запускать несколько проверок одновременно.
+      RandomizedDelaySec = "5min";
+    };
+  };
 }
