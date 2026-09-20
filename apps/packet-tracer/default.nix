@@ -3,35 +3,42 @@
 , dpkg
 , autoPatchelfHook
 , makeWrapper
+
 , glib
 , fontconfig
 , freetype
+
 , systemd
 , libdrm
 , libGL
+, libudev0-shim
 , libxcb
 , libX11
 , libSM
 , libICE
 , libxkbcommon
-, libxkbcommon
 , wayland
+
+, xcbutil
+, xcbutilimage
+, xcbutilkeysyms
+, xcbutilrenderutil
+, xcbutilwm
+
 , nss
 , nspr
+, libxml2_13
+, libxslt
+
 , libXcomposite
 , libXdamage
 , libXfixes
 , libXrandr
 , libXtst
-, libxml2
-, libxslt
-, xcb-util-cursor
-, xcb-util-image
-, xcb-util-keysyms
-, xcb-util-renderutil
-, xcb-util-wm
+
 , pulseaudio
 , alsa-lib
+
 , ...
 }:
 
@@ -55,10 +62,11 @@ stdenv.mkDerivation rec {
     fontconfig
     freetype
 
-    # system / graphics
+    # System / graphics
     systemd
     libdrm
     libGL
+    libudev0-shim
 
     # X11
     libX11
@@ -72,39 +80,84 @@ stdenv.mkDerivation rec {
 
     # XCB
     libxcb
-    xcb-util-cursor
-    xcb-util-image
-    xcb-util-keysyms
-    xcb-util-renderutil
-    xcb-util-wm
+    xcbutil
+    xcbutilimage
+    xcbutilkeysyms
+    xcbutilrenderutil
+    xcbutilwm
 
-    # keyboard / Wayland
+    # Keyboard / Wayland
     libxkbcommon
     wayland
 
     # Qt WebEngine
     nss
     nspr
-    libxml2
+    libxml2_13.out
     libxslt
 
-    # audio
+    # Audio
     pulseaudio
     alsa-lib
+  ];
+
+  runtimeDependencies = [
+    libxml2_13.out
+    libudev0-shim
   ];
 
   unpackPhase = ''
     dpkg-deb -x $src .
   '';
 
+
+
   installPhase = ''
     mkdir -p $out
-    cp -r opt/pt/* $out/
+    cp -r opt $out/
+
+    # Qt WebEngine ожидает Chromium resources
+    # в подкаталоге bin/resources.
+    mkdir -p $out/opt/pt/bin/resources
+
+    ln -s ../icudtl.dat \
+      $out/opt/pt/bin/resources/icudtl.dat
+
+    ln -s ../qtwebengine_resources.pak \
+      $out/opt/pt/bin/resources/qtwebengine_resources.pak
+
+    ln -s ../qtwebengine_resources_100p.pak \
+      $out/opt/pt/bin/resources/qtwebengine_resources_100p.pak
+
+    ln -s ../qtwebengine_resources_200p.pak \
+      $out/opt/pt/bin/resources/qtwebengine_resources_200p.pak
+
+    mkdir -p $out/opt/pt/bin/translations
+
+    ln -s ../qtwebengine_locales \
+      $out/opt/pt/bin/translations/qtwebengine_locales
   '';
 
+
+
+
   postFixup = ''
-    wrapProgram $out/bin/PacketTracer
+    mkdir -p $out/bin
+
+    cat > $out/bin/PacketTracer <<EOF
+  #!/bin/sh
+
+  export LD_LIBRARY_PATH="${libudev0-shim}/lib:\$LD_LIBRARY_PATH"
+
+  cd "$out/opt/pt/bin" || exit 1
+  exec "$out/opt/pt/bin/PacketTracer" "\$@"
+  EOF
+
+    chmod +x $out/bin/PacketTracer
   '';
+
+
+
 
   meta = {
     description = "Cisco Packet Tracer";
