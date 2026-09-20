@@ -1,15 +1,21 @@
-{ pkgs }:
+{ lib
+, stdenv
+, dpkg
+, autoPatchelfHook
+, makeWrapper
+, ...
+}:
 
-pkgs.stdenv.mkDerivation rec {
+stdenv.mkDerivation rec {
   pname = "cisco-packet-tracer";
   version = "8.2.2";
 
-  src = ./CiscoPacketTracer822.deb;
+  src = ./PacketTracer822.deb;
 
   nativeBuildInputs = [
-    pkgs.autoPatchelfHook
-    pkgs.dpkg
-    pkgs.makeWrapper
+    dpkg
+    autoPatchelfHook
+    makeWrapper
   ];
 
   unpackPhase = ''
@@ -22,12 +28,13 @@ pkgs.stdenv.mkDerivation rec {
   '';
 
   postFixup = ''
-    wrapProgram $out/bin/PacketTracer \
-      --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath [
-        pkgs.stdenv.cc.cc
-        pkgs.zlib
-        pkgs.curl
-        pkgs.openssl
-      ]}"
+    wrapProgram $out/bin/PacketTracer
   '';
+
+  meta = {
+    description = "Cisco Packet Tracer";
+    homepage = "https://www.netacad.com/cisco-packet-tracer";
+    license = lib.licenses.unfree;
+    platforms = lib.platforms.linux;
+  };
 }
