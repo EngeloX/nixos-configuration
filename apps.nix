@@ -5,6 +5,8 @@
   environment.systemPackages = with pkgs; [
     telegram-desktop
     discord
+    google-chrome
+    (callPackage ./apps/packet-tracer {})
   ];
 
   programs.steam.enable = true;

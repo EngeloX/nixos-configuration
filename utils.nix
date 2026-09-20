@@ -7,5 +7,6 @@
       tree
       pciutils
       git
+      git-lfs
     ];
 }
