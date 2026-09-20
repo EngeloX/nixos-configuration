@@ -3,6 +3,16 @@
 , dpkg
 , autoPatchelfHook
 , makeWrapper
+, glib
+, fontconfig
+, freetype
+, systemd
+, libdrm
+, libGL
+, libxcb
+, libX11
+, pulseaudio
+, alsa-lib
 , ...
 }:
 
@@ -16,6 +26,20 @@ stdenv.mkDerivation rec {
     dpkg
     autoPatchelfHook
     makeWrapper
+  ];
+
+  buildInputs = [
+    stdenv.cc.cc.lib
+    glib
+    fontconfig
+    freetype
+    systemd
+    libdrm
+    libGL
+    libxcb
+    libX11
+    pulseaudio
+    alsa-lib
   ];
 
   unpackPhase = ''
